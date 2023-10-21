@@ -2,18 +2,19 @@ import './App.css';
 import { useState } from 'react';
 
 //Vars for testing
-const NEWYORK = {time: null, name: "New York", coords: [40.7128, -74.0060]}
+const NEWYORK = {time: null, name: "New York", lat: 40.7128, lon: -74.0060}
 const FLIGHTCODE = "NK712"
 
 //Do two of these for flight departure and arrival location and times :)
 export default function App() {
   //Use Date
-  const [departure, setDeparture] = useState({time: null, name: null})
-  const [arrival, setArrival] = useState({time: null, name: null})
+  const [departure, setDeparture] = useState({time: null, name: null, lat: null, lon: null})
+  const [arrival, setArrival] = useState({time: null, name: null, coords: null})
 
+
+  //Takes user input code and sets state for flight info
   function flightCall(code) {
     const url = `https://flight-radar1.p.rapidapi.com/flights/get-more-info?query=${code}&fetchBy=flight&page=1`
-    console.log()
     fetch(url, {
       method: "GET",
       headers: {
@@ -23,12 +24,24 @@ export default function App() {
       .then((response) => response.json())
       .then((response) => {
         console.log(response)
-        const flight = response.response[0]
-        flight.airport.origin
+        const data = response.response.data[0]
+        //departure vars
+        let name = data.airport.origin.name
+        let lat = data.airport.origin.position.latitude
+        let lon = data.airport.origin.position.longitude
+        let time = data.time.scheduled.departure
+        setDeparture({time: time, name: name, lat: lat, lon: lon})
+        console.log(departure)
+        //arrival vars
+        name = data.airport.destination.name
+        lat = data.airport.destination.position.latitude
+        lon = data.airport.destination.position.longitude
+        time = data.time.scheduled.arrival
+        setArrival({time: time, name: name, lat: lat, lon: lon})
+        console.log(arrival)
       });
   }
 
-  flightCall(FLIGHTCODE)
   return (
     <div className="container">
       <input id="flight-search" placeholder="Flight Number"></input>
@@ -46,20 +59,19 @@ function WeatherCard({city}) {
   const [wind, setWind] = useState(null)
   const [tempTrend, setTempTrend] = useState(null)
 
-  // Get location (will rely on search box stuff)
-  function Flight(flight) {
-
-  }
   // Call Weather API (this can be consolidated)
-  function weatherCall() {
-    // We'll need this later because the national weather service has a two request system
-    // const url = `https://api.weather.gov/points/${coords[0]},${coords[1]}`
-
-    const url = `https://api.weather.gov/gridpoints/OKX/33,35/forecast`
-    callCoords(url)
+  function weatherCall(lat, lon) {
+    // We'll need this because the national weather service has a two request system
+    const coordsURL = `https://api.weather.gov/points/${lat},${lon}`
+    fetch(coordsURL, {method: "GET"})
+      .then((response) => response.json())
+      .then((response) => {
+        callGrid(response.properties.forecastHourly)
+    })
   }
 
-  function callCoords(url) {
+
+  function callGrid(url) {
     fetch(url, {method: "GET"})
       .then((response) => response.json())
       .then((response) => {
@@ -74,7 +86,7 @@ function WeatherCard({city}) {
     });
   }
 
-  weatherCall(city.coords)
+  weatherCall(city.lat, city.lon)
 
   // Display info (with various intermediate steps tbd)
   return (
