@@ -1,39 +1,70 @@
-import logo from './logo.svg';
 import './App.css';
 import { useState } from 'react';
 
+//Vars for testing
+const NEWYORK = {time: null, name: "New York", coords: [40.7128, -74.0060]}
+const FLIGHTCODE = "NK712"
+
 //Do two of these for flight departure and arrival location and times :)
-
 export default function App() {
-  const NEWYORK = [40.7128, -74.0060]
-  const [temp, setTemp] = useState(0)
-  const [humid, setHumid] = useState(0)
-  const [precip, setPrecip] = useState(0)
-  const [icon, setIcon] = useState(0)
-  const [wind, setWind] = useState(0)
-  const [tempTrend, setTempTrend] = useState(0)
+  //Use Date
+  const [departure, setDeparture] = useState({time: null, name: null})
+  const [arrival, setArrival] = useState({time: null, name: null})
 
-  // Get location (will rely on search box stuff)
-  function mapRequest() {
-
+  function flightCall(code) {
+    const url = `https://flight-radar1.p.rapidapi.com/flights/get-more-info?query=${code}&fetchBy=flight&page=1`
+    console.log()
+    fetch(url, {
+      method: "GET",
+      headers: {
+      'X-RapidAPI-Key': process.env.REACT_APP_APIKEY,
+      'X-RapidAPI-Host': 'flight-radar1.p.rapidapi.com'
+    }})
+      .then((response) => response.json())
+      .then((response) => {
+        console.log(response)
+        const flight = response.response[0]
+        flight.airport.origin
+      });
   }
 
+  flightCall(FLIGHTCODE)
+  return (
+    <div className="container">
+      <input id="flight-search" placeholder="Flight Number"></input>
+      <WeatherCard city={NEWYORK}/>
+    </div>
+  )
+}
 
+function WeatherCard({city}) {
+
+  const [temp, setTemp] = useState(null)
+  const [humid, setHumid] = useState(null)
+  const [precip, setPrecip] = useState(null)
+  const [icon, setIcon] = useState(null)
+  const [wind, setWind] = useState(null)
+  const [tempTrend, setTempTrend] = useState(null)
+
+  // Get location (will rely on search box stuff)
+  function Flight(flight) {
+
+  }
   // Call Weather API (this can be consolidated)
-  function weatherCall({coords}) {
+  function weatherCall() {
     // We'll need this later because the national weather service has a two request system
     // const url = `https://api.weather.gov/points/${coords[0]},${coords[1]}`
 
     const url = `https://api.weather.gov/gridpoints/OKX/33,35/forecast`
-    call(url)
+    callCoords(url)
   }
 
-  function call(url) {
+  function callCoords(url) {
     fetch(url, {method: "GET"})
       .then((response) => response.json())
       .then((response) => {
         const today = response.properties.periods[0]
-        console.log(today)
+        // console.log(today)
         setTemp(today.temperature)
         setTempTrend(today.temperatureTrend)
         setHumid(today.relativeHumidity.value)
@@ -43,13 +74,13 @@ export default function App() {
     });
   }
 
-  weatherCall(NEWYORK)
+  weatherCall(city.coords)
 
   // Display info (with various intermediate steps tbd)
   return (
     <div className="weather-card">
       <div className="title-row">
-        <h2>New York</h2>
+        <h2>{city.name}</h2>
       </div>
       <div className="content-row">
         <img src={icon} alt="weather icon" className="weather-icon"/>
