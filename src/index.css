@@ -16,6 +16,12 @@ code {
   height: 100vh;
 }
 
+.cards {
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+}
+
 .weather-card {
   display: grid;
   grid-template-rows: 100px 500px;
