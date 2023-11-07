@@ -4,8 +4,7 @@ import { useState } from 'react';
 
 export default function App() {
   // need new states to keep track of
-  const [departure, setDeparture] = useState({time: null, name: null, lat: null, lon: null})
-  const [arrival, setArrival] = useState({time: null, name: null, lat: null, lon: null})
+  const [flight, setFlight] = useState(null)
 
   //Takes user input code and sets state for flight info
   function handleSumbit(e) {
@@ -39,21 +38,22 @@ export default function App() {
         const data = response.result.response.data.reverse().find(findTimeFlight)
         console.log(data)
 
-        // departure vars
-        setDeparture({
-          time: data.time.scheduled.departure * 1000,
-          name: data.airport.origin.name,
-          lat: data.airport.origin.position.latitude,
-          lon: data.airport.origin.position.longitude
+        // set the flight info
+        setFlight({
+          departure: {
+            time: data.time.scheduled.departure * 1000,
+            name: data.airport.origin.name,
+            lat: data.airport.origin.position.latitude,
+            lon: data.airport.origin.position.longitude
+          },
+          arrival: {
+            time: data.time.scheduled.arrival * 1000,
+            name: data.airport.destination.name,
+            lat: data.airport.destination.position.latitude,
+            lon: data.airport.destination.position.longitude
+          }
         })
 
-        // arrival vars
-        setArrival({
-          time: data.time.scheduled.arrival * 1000,
-          name: data.airport.destination.name,
-          lat: data.airport.destination.position.latitude,
-          lon: data.airport.destination.position.longitude
-        })
         console.log("Arrival and Departure set")
       })
       .catch((error) => {
@@ -84,8 +84,8 @@ export default function App() {
     <div className="container">
       <SearchBar onSubmit={handleSumbit}/>
       <div className="cards">
-        <WeatherCard city={arrival}/>
-        <WeatherCard city={departure}/>
+        <WeatherCard city={flight.departure}/>
+        <WeatherCard city={flight.arrival}/>
       </div>
     </div>
   )
@@ -94,14 +94,7 @@ export default function App() {
 
 
 function WeatherCard({city}) {
-  //Update these values to display a fake flight or something??  Or implement logic in render
-
-  const [temp, setTemp] = useState(null)
-  const [humid, setHumid] = useState(null)
-  const [icon, setIcon] = useState(null)
-  const [wind, setWind] = useState(null)
-  const [desc, setDesc] = useState(null)
-  const [timeString, setTimeString] = useState(null)
+  const [forecast, setForecast] = useState(null)
 
   // Call Weather API
   function weatherCall(lat, lon) {
@@ -111,42 +104,50 @@ function WeatherCard({city}) {
       .then((response) => response.json())
       .then((response) => {
         console.log(response)
-        callGrid(response.properties.forecastHourly, city.time)
+
+        // Call second api for weather
+        callGrid(response.properties.forecastHourly, response.properties.timeZone)
+
+
     }).catch((error) => {
       console.log(error)
     })
 
   }
 
-  // This fires a million times for some reason???
-  function callGrid(url, time) {
+  // This fires a million times (I think because of the way I'm setting state)
+  function callGrid(url, zone) {
+    console.log(zone)
     fetch(url, {method: "GET"})
       .then((response) => response.json())
       .then((response) => {
-        // Checks which time period to use
         console.log("Checking weather")
-        const period = findTimeWeather(response, time)
+
+        // Checks which time period to use
+        const period = findTimeWeather(response)
         console.log(period)
 
         // Sets based on that period
-
-        setTemp(period.temperature)
-        setDesc(period.shortForecast)
-        setHumid(period.relativeHumidity.value)
-        setIcon(period.icon)
-        setWind(period.windSpeed)
+        setForecast({
+          temp: period.temperature,
+          desc: period.shortForecast,
+          humid: period.relativeHumidity.value,
+          icon: period.icon,
+          wind: period.windSpeed,
+          timezone: zone
+        })
     }).catch((error) => {
       console.log(error)
     });
   }
 
-  function findTimeWeather(response, time) {
+  function findTimeWeather(response) {
     let match = {}
     // could use .find in here, rather than all this nonsense
     response.properties.periods.forEach((period) => {
       const start = Date.parse(period.startTime)
       const end = Date.parse(period.endTime)
-      if (start < time && end > time) {
+      if (start < city.time && end > city.time) {
         console.log("Period matched")
         match = period
       }
@@ -154,21 +155,32 @@ function WeatherCard({city}) {
     return match
   }
 
+  // Format the date string to local timezone
+  function formatTimeString() {
+    const time = new Date(city.time)
+    const options = { timeZone: forecast.timezone, timeStyle: "short" }
+    return time.toLocaleTimeString("en-US", options)
+  }
+
+
+  // Make sure that the city was actually found, and the forecast is unset, before setting forecast
   if (city.name) {
     weatherCall(city.lat, city.lon);
+  }
+  if (forecast) {
     // Display info
     return (
       <div className="weather-card">
         <div className="title-row">
           <h2>{city.name}</h2>
-          <p>{timeString}</p>
+          <p>{formatTimeString()}</p>
         </div>
         <div className="content-row">
-          <img src={icon} alt="weather icon" className="weather-icon"/>
-          <h3>{temp}°F</h3>
-          <p>{desc}</p>
-          <p>Wind: {wind}</p>
-          <p>Humidity: {humid}%</p>
+          <img src={forecast.icon} alt="weather icon" className="weather-icon"/>
+          <h3>{forecast.temp}°F</h3>
+          <p>{forecast.desc}</p>
+          <p>Wind: {forecast.wind}</p>
+          <p>Humidity: {forecast.humid}%</p>
         </div>
       </div>
     );
