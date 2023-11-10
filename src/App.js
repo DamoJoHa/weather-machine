@@ -55,14 +55,19 @@ export default function App() {
         }
 
         console.log("Flight Found")
-
-        setWeather({
-          departure: weatherFromFlight(flights.departure),
-          arrival: weatherFromFlight(flights.arrival)
-        })
       })
       .catch((error) => {
         console.log(error)
+      })
+
+      const departure = await weatherFromFlight(flights.departure)
+      const arrival = await weatherFromFlight(flights.arrival)
+
+      console.log("changing state")
+
+      setWeather({
+        departure: departure,
+        arrival: arrival
       })
   }
 
@@ -167,12 +172,12 @@ function CardBox(data) {
   console.log(data.weather)
   const weather = data.weather
   if (!weather) {
-    return (<p>Hello</p>)
+    return (<p>Please enter a valid request in the search box.</p>)
   }
   return (
     <div className="cards">
-      <WeatherCard city={weather.departure}/>
-      <WeatherCard city={weather.arrival}/>
+      <WeatherCard weather={weather.departure}/>
+      <WeatherCard weather={weather.arrival}/>
     </div>
     )
 }
