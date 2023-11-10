@@ -3,15 +3,14 @@ import { useState } from 'react';
 
 
 export default function App() {
-  // need new states to keep track of
-  const [flight, setFlight] = useState(null)
+  const [weather, setWeather] = useState(null)
 
   //Takes user input code and sets state for flight info
-  function handleSumbit(e) {
+  async function handleSumbit(e) {
     e.preventDefault();
     console.log("Code received")
 
-    // REGEX the code here?
+    // TODO: REGEX the code here?
 
     // Handle form data
     const formData = new FormData(e.target)
@@ -20,9 +19,10 @@ export default function App() {
 
 
     // API call to get flight data
+    let flights;
     const url = `https://flight-radar1.p.rapidapi.com/flights/get-more-info?query=${code}&fetchBy=flight&page=1`
     console.log("Fetching flight info")
-    fetch(url, {
+    await fetch(url, {
       method: "GET",
       headers: {
       'X-RapidAPI-Key': process.env.REACT_APP_APIKEY,
@@ -38,8 +38,8 @@ export default function App() {
         const data = response.result.response.data.reverse().find(findTimeFlight)
         console.log(data)
 
-        // set the flight info
-        setFlight({
+        // assign the flight info
+        flights = {
           departure: {
             time: data.time.scheduled.departure * 1000,
             name: data.airport.origin.name,
@@ -52,9 +52,14 @@ export default function App() {
             lat: data.airport.destination.position.latitude,
             lon: data.airport.destination.position.longitude
           }
-        })
+        }
 
-        console.log("Arrival and Departure set")
+        console.log("Flight Found")
+
+        setWeather({
+          departure: weatherFromFlight(flights.departure),
+          arrival: weatherFromFlight(flights.arrival)
+        })
       })
       .catch((error) => {
         console.log(error)
@@ -62,6 +67,7 @@ export default function App() {
   }
 
 
+  // Returns true if a scheduled time is in the future
   function findTimeFlight(period) {
     // The multiplication compensates for UNIX time things
     const dept = period.time.scheduled.departure * 1000
@@ -71,83 +77,68 @@ export default function App() {
     return (dept > now)
   }
 
-  function SearchBar({onSubmit}) {
-    return (
-      <form className="search-bar" onSubmit={onSubmit}>
-          <input name="code" placeholder="Flight Number"></input>
-          <button type="submit">Search</button>
-      </form>
-    )
+
+  // Weather Card Stuff Below
+
+  // manages all of the steps to get weather info from flight info
+  async function weatherFromFlight(flight) {
+    const gridCallData = await weatherCall(flight.lat, flight.lon)
+    console.log(gridCallData)
+    const forecast =  await callGrid(gridCallData.forecastHourly, gridCallData.timeZone, flight.time, flight.name)
+    console.log(forecast)
+    return forecast
   }
 
-  return (
-    <div className="container">
-      <SearchBar onSubmit={handleSumbit}/>
-      <div className="cards">
-        <WeatherCard city={flight.departure}/>
-        <WeatherCard city={flight.arrival}/>
-      </div>
-    </div>
-  )
-}
-
-
-
-function WeatherCard({city}) {
-  const [forecast, setForecast] = useState(null)
-
-  // Call Weather API
-  function weatherCall(lat, lon) {
-    // We'll need this because the national weather service has a two request system
+  async function weatherCall(lat, lon) {
+    // Request based on lat/lon to get the url for the second request
     const coordsURL = `https://api.weather.gov/points/${lat},${lon}`
-    fetch(coordsURL, {method: "GET"})
+    let forecast
+    await fetch(coordsURL, {method: "GET"})
       .then((response) => response.json())
       .then((response) => {
         console.log(response)
-
-        // Call second api for weather
-        callGrid(response.properties.forecastHourly, response.properties.timeZone)
-
-
-    }).catch((error) => {
-      console.log(error)
-    })
-
+        forecast = response.properties
+      })
+      .catch((error) => {
+        console.log(error)
+      })
+    return forecast
   }
 
-  // This fires a million times (I think because of the way I'm setting state)
-  function callGrid(url, zone) {
+  async function callGrid(url, zone, time, city) {
     console.log(zone)
-    fetch(url, {method: "GET"})
+    const forecast = await fetch(url, {method: "GET"})
       .then((response) => response.json())
       .then((response) => {
         console.log("Checking weather")
 
         // Checks which time period to use
-        const period = findTimeWeather(response)
+        const period = findTimeWeather(response, time)
         console.log(period)
 
         // Sets based on that period
-        setForecast({
+        return {
           temp: period.temperature,
           desc: period.shortForecast,
           humid: period.relativeHumidity.value,
           icon: period.icon,
           wind: period.windSpeed,
-          timezone: zone
-        })
+          time: formatTimeString(zone, time),
+          cityName: city
+        }
     }).catch((error) => {
       console.log(error)
     });
+    return forecast
   }
 
-  function findTimeWeather(response) {
-    let match = {}
+  function findTimeWeather(response, time) {
+    let match
     // could use .find in here, rather than all this nonsense
     response.properties.periods.forEach((period) => {
       const start = Date.parse(period.startTime)
       const end = Date.parse(period.endTime)
-      if (start < city.time && end > city.time) {
+      if (start < time && end > time) {
         console.log("Period matched")
         match = period
       }
@@ -156,33 +147,61 @@ function WeatherCard({city}) {
   }
 
   // Format the date string to local timezone
-  function formatTimeString() {
-    const time = new Date(city.time)
-    const options = { timeZone: forecast.timezone, timeStyle: "short" }
+  function formatTimeString(zone, timeNum) {
+    const time = new Date(timeNum)
+    const options = { timeZone: zone, timeStyle: "short" }
     return time.toLocaleTimeString("en-US", options)
   }
 
 
-  // Make sure that the city was actually found, and the forecast is unset, before setting forecast
-  if (city.name) {
-    weatherCall(city.lat, city.lon);
+  return (
+    <div className="container">
+      <SearchBar onSubmit={handleSumbit}/>
+      <CardBox weather={weather}/>
+    </div>
+  )
+};
+
+// Renders card container
+function CardBox(data) {
+  console.log(data.weather)
+  const weather = data.weather
+  if (!weather) {
+    return (<p>Hello</p>)
   }
-  if (forecast) {
-    // Display info
-    return (
-      <div className="weather-card">
-        <div className="title-row">
-          <h2>{city.name}</h2>
-          <p>{formatTimeString()}</p>
-        </div>
-        <div className="content-row">
-          <img src={forecast.icon} alt="weather icon" className="weather-icon"/>
-          <h3>{forecast.temp}°F</h3>
-          <p>{forecast.desc}</p>
-          <p>Wind: {forecast.wind}</p>
-          <p>Humidity: {forecast.humid}%</p>
-        </div>
+  return (
+    <div className="cards">
+      <WeatherCard city={weather.departure}/>
+      <WeatherCard city={weather.arrival}/>
+    </div>
+    )
+}
+
+// Renders Weather Card
+function WeatherCard({weather}) {
+  return (
+    <div className="weather-card">
+      <div className="title-row">
+        <h2>{weather.cityName}</h2>
+        <p>{weather.time}</p>
       </div>
-    );
-  }
+      <div className="content-row">
+        <img src={weather.icon} alt="weather icon" className="weather-icon"/>
+        <h3>{weather.temp}°F</h3>
+        <p>{weather.desc}</p>
+        <p>Wind: {weather.wind}</p>
+        <p>Humidity: {weather.humid}%</p>
+      </div>
+    </div>
+  );
+}
+
+// Renders search bar
+function SearchBar({onSubmit}) {
+  return (
+    <form className="search-bar" onSubmit={onSubmit}>
+        <input name="code" placeholder="Flight Number"></input>
+        <button type="submit">Search</button>
+    </form>
+  )
 }
