@@ -1,5 +1,6 @@
 import './App.css';
 import { useState } from 'react';
+import reportWebVitals from './reportWebVitals';
 
 
 export default function App() {
@@ -121,13 +122,18 @@ export default function App() {
         const period = findTimeWeather(response, time)
         console.log(period)
 
-        // Sets based on that period
-        return {
+        // if a matching period was found, asign the forecast
+        const forecast = period ? {
           temp: period.temperature,
           desc: period.shortForecast,
           humid: period.relativeHumidity.value,
           icon: period.icon,
-          wind: period.windSpeed,
+          wind: period.windSpeed
+        } : null;
+
+        // Sets based on that period
+        return {
+          forecast: forecast,
           time: formatTimeString(zone, time),
           cityName: city
         }
@@ -187,15 +193,28 @@ function WeatherCard({weather}) {
         <h2>{weather.cityName}</h2>
         <p>{weather.time}</p>
       </div>
-      <div className="content-row">
-        <img src={weather.icon} alt="weather icon" className="weather-icon"/>
-        <h3>{weather.temp}°F</h3>
-        <p>{weather.desc}</p>
-        <p>Wind: {weather.wind}</p>
-        <p>Humidity: {weather.humid}%</p>
-      </div>
+      <ForecastBlock forecast={weather.forecast}/>
     </div>
   );
+}
+
+function ForecastBlock({forecast}) {
+  if (forecast) {
+    return (
+      <div className="content-row">
+        <img src={forecast.icon} alt="weather icon" className="weather-icon"/>
+        <h3>{forecast.temp}°F</h3>
+        <p>{forecast.desc}</p>
+        <p>Wind: {forecast.wind}</p>
+        <p>Humidity: {forecast.humid}%</p>
+      </div>
+    )
+  }
+  return (
+    <div className="content-row">
+      <p>Weather data not available</p>
+    </div>
+  )
 }
 
 // Renders search bar
