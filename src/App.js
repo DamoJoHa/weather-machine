@@ -11,14 +11,24 @@ export default function App() {
     e.preventDefault();
     console.log("Code received")
 
-    // TODO: REGEX the code here?
-
     // Handle form data
-    const formData = new FormData(e.target)
+    const formData = new FormData(e.target);
     const formJson = Object.fromEntries(formData.entries());
-    const code = formJson.code
+    const input = formJson.code.replaceAll(/\s/g, "")
 
+    // Check code format before making api request
+    const codeRegex = /(?<![\dA-Z])(?!\d{2})([A-Z\d]{2})(\d{2,4})(?!\d)/
+    const codeMatch = input.match(codeRegex)
+    let code
+    if (codeMatch) {
+      code = codeMatch[0]
+    }
+    if (code) {
+      findFlight(code)
+    }
+  }
 
+  async function findFlight(code) {
     // API call to get flight data
     let flights;
     const url = `https://flight-radar1.p.rapidapi.com/flights/get-more-info?query=${code}&fetchBy=flight&page=1`
@@ -61,18 +71,21 @@ export default function App() {
         console.log(error)
       })
 
-      const departure = await weatherFromFlight(flights.departure)
-      const arrival = await weatherFromFlight(flights.arrival)
+      if (flights) {
+        const departure = await weatherFromFlight(flights.departure)
 
-      console.log("changing state")
+        const arrival = await weatherFromFlight(flights.arrival)
 
-      setWeather({
-        departure: departure,
-        arrival: arrival
-      })
+        console.log("changing state")
+
+        setWeather({
+          departure: departure,
+          arrival: arrival
+        })
+      } else {
+        console.log("Flight not found")
+      }
   }
-
-
   // Returns true if a scheduled time is in the future
   function findTimeFlight(period) {
     // The multiplication compensates for UNIX time things
@@ -177,6 +190,9 @@ function CardBox({weather}) {
   if (!weather) {
     return (<p>Please enter a valid request in the search box.</p>)
   }
+  if (!(weather.departure && weather.arrival)) {
+    return (<p>There was a problem handling your request.\nCheck your flight number and try again.</p>)
+  }
   return (
     <div className="cards">
       <WeatherCard weather={weather.departure}/>
@@ -199,6 +215,7 @@ function WeatherCard({weather}) {
 }
 
 function ForecastBlock({forecast}) {
+  // Catch cases where a location is found but a forecast is not made
   if (forecast) {
     return (
       <div className="content-row">
