@@ -168,9 +168,8 @@ export default function App() {
 };
 
 // Renders card container
-function CardBox(data) {
-  console.log(data.weather)
-  const weather = data.weather
+function CardBox(weather) {
+  console.log(weather)
   if (!weather) {
     return (<p>Please enter a valid request in the search box.</p>)
   }
