@@ -138,16 +138,14 @@ export default function App() {
   }
 
   function findTimeWeather(response, time) {
-    let match
-    // could use .find in here, rather than all this nonsense
-    response.properties.periods.forEach((period) => {
+    const match = response.properties.periods.find((period) => {
       const start = Date.parse(period.startTime)
       const end = Date.parse(period.endTime)
-      if (start < time && end > time) {
-        console.log("Period matched")
-        match = period
-      }
+      return start < time && end > time
     });
+
+    if (match) console.log("Match found")
+
     return match
   }
 
@@ -168,7 +166,7 @@ export default function App() {
 };
 
 // Renders card container
-function CardBox(weather) {
+function CardBox({weather}) {
   console.log(weather)
   if (!weather) {
     return (<p>Please enter a valid request in the search box.</p>)
