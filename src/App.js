@@ -16,7 +16,7 @@ export default function App() {
     const formJson = Object.fromEntries(formData.entries());
     const input = formJson.code.replaceAll(/\s/g, "")
 
-    // Check code format before making api request
+    // Check code format before making api request (I shamelessly stole this regex from the web)
     const codeRegex = /(?<![\dA-Z])(?!\d{2})([A-Z\d]{2})(\d{2,4})(?!\d)/
     const codeMatch = input.match(codeRegex)
     let code
@@ -191,25 +191,28 @@ function CardBox({weather}) {
     return (<p>Please enter a valid request in the search box.</p>)
   }
   if (!(weather.departure && weather.arrival)) {
-    return (<p>There was a problem handling your request.\nCheck your flight number and try again.</p>)
+    return (<p>There was a problem handling your request.  Check your flight number and try again.</p>)
   }
   return (
     <div className="cards">
-      <WeatherCard weather={weather.departure}/>
-      <WeatherCard weather={weather.arrival}/>
+      {/* the side prop will be used to format departure and arrival cards */}
+      <WeatherCard city={weather.departure} side={true}/>
+      <WeatherCard city={weather.arrival} side={false}/>
     </div>
     )
 }
 
 // Renders Weather Card
-function WeatherCard({weather}) {
+function WeatherCard({ city, side }) {
+  const cardClass = side ? "departure weather-card" : "arrival weather-card";
+
   return (
-    <div className="weather-card">
+    <div className={cardClass}>
       <div className="title-row">
-        <h2>{weather.cityName}</h2>
-        <p>{weather.time}</p>
+        <h2>{city.cityName}</h2>
+        <p>{city.time}</p>
       </div>
-      <ForecastBlock forecast={weather.forecast}/>
+      <ForecastBlock forecast={city.forecast}/>
     </div>
   );
 }
