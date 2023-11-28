@@ -1,10 +1,8 @@
-Notes for the wary:
+Notes:
 
 This app only currently works with upcoming flights (does not check past flights or flights in progress).
 Additionally, this only works for US flights at the moment, because it relies on a weather API maintained by the US government.
 
-There are a number of known issues, currently the highest priority one being that if weather data is not available for departure or landing, the whole thing breaks.
+Its also *very* ugly.  Best to view this as a proof of concept.  Maybe could be useful in the future as a part of a larger flight planning app?
 
-It is also rather ugly at the moment.  Oops.
-
-All of this relies on a RapidAPI key, which is not included in the git repository for obvious reasons.
+(All of this relies on a RapidAPI key, which is not included in the git repo for obvious reasons.)
